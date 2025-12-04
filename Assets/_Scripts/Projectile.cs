@@ -23,8 +23,12 @@ public class Projectile : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
-        Debug.Log($"Hit Object {collision.gameObject.transform.name}");
-
+       // Debug.Log($"Hit Object {collision.gameObject.transform.name}");
+       Enemy hitEnemy = collision.gameObject.GetComponent<Enemy>(); 
+        if (hitEnemy != null)
+        {
+            hitEnemy.TakeDamage(Damage);
+        }
 
         Destroy(gameObject);
     }
