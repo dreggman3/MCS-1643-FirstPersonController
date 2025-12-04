@@ -1,15 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
-using Unity.VisualScripting.Dependencies.NCalc;
 using UnityEngine;
 
 public class FPController : MonoBehaviour
 {
-    // Rotate left and right with the mouse
-    // Look up and down with the camera based on mouse vertical
-    // Jump if space bar (single jump)
-    // Stretch goals for today: sprint, crouch
-
     public float moveSpeed = 2.0f;
     public float strafeSpeed = 1.5f;
     public float yawSpeed = 260.0f;
@@ -19,71 +13,73 @@ public class FPController : MonoBehaviour
     public float maxPitch = 70.0f;
     public float minPitch = -70.0f;
 
-    private Vector3 jumpDir;
-    private Rigidbody rb;
+    public GameObject Weapon1;
+    public GameObject Weapon2;
 
-    // Start is called before the first frame update
+    private Rigidbody rb;
+    private int currentWeapon;
+    private float pitch = 0f;
+
     void Start()
     {
         rb = GetComponent<Rigidbody>();
-        jumpDir = transform.up;
+
+        // Freeze rotation so physics forces don’t spin the player
+        rb.freezeRotation = true;
 
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
+
+        currentWeapon = 1;
+        Weapon1.SetActive(true);
+        Weapon2.SetActive(false);
     }
 
-    // Update is called once per frame
     void Update()
     {
-        // grab variables for all the input
+        // Input
         float h = Input.GetAxis("Horizontal");
         float v = Input.GetAxis("Vertical");
         bool jump = Input.GetKeyDown(KeyCode.Space);
         float yaw = Input.GetAxis("Mouse X");
-        float pitch = Input.GetAxis("Mouse Y");
+        float pitchInput = Input.GetAxis("Mouse Y");
 
-        Vector3 vec = Vector3.zero;
-        vec += transform.right * h * strafeSpeed;
-        vec += transform.forward * v * moveSpeed;
-        vec.y = rb.velocity.y;
+        // --- Movement ---
+        Vector3 move = (transform.right * h * strafeSpeed + transform.forward * v * moveSpeed);
+        rb.MovePosition(rb.position + move * Time.deltaTime);
 
-        rb.velocity = vec;
+        // --- Rotation (Yaw) ---
+        Quaternion deltaRotation = Quaternion.Euler(0f, yaw * yawSpeed * Time.deltaTime, 0f);
+        rb.MoveRotation(rb.rotation * deltaRotation);
 
-        transform.localEulerAngles += new Vector3(
-            0,
-            yaw * yawSpeed * Time.deltaTime,
-            0);
-        
-        float pitchDelta = -1 * pitch * pitchSpeed * Time.deltaTime;
-        float newPitch = Camera.main.transform.localEulerAngles.x + pitchDelta;
-        newPitch = AngleWithin180(newPitch);
-
-        newPitch = Mathf.Clamp(newPitch, minPitch, maxPitch);
+        // --- Camera Pitch ---
+        pitch -= pitchInput * pitchSpeed * Time.deltaTime;
+        pitch = Mathf.Clamp(pitch, minPitch, maxPitch);
 
         Camera.main.transform.localEulerAngles = new Vector3(
-            newPitch,
-            Camera.main.transform.localEulerAngles.y,
-            Camera.main.transform.localEulerAngles.z);
+            pitch,
+            0f,
+            0f);
 
-        if (jump && Physics.Raycast(groundRef.position, transform.up * -1, .015f))
+        // --- Jump ---
+        if (jump && Physics.Raycast(groundRef.position, Vector3.down, 0.1f))
         {
-            rb.AddForce(jumpForce * jumpDir, ForceMode.Impulse);
+            rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+        }
+
+        // --- Weapon Switching ---
+        if (Input.GetKeyDown(KeyCode.Alpha1) && currentWeapon != 1)
+        {
+            currentWeapon = 1;
+            Weapon1.SetActive(true);
+            Weapon2.SetActive(false);
+        }
+        else if (Input.GetKeyDown(KeyCode.Alpha2) && currentWeapon != 2)
+        {
+            currentWeapon = 2;
+            Weapon1.SetActive(false);
+            Weapon2.SetActive(true);
         }
     }
-
-//precondition: angle is between 0 and 360
-    public static float AngleWithin180(float angle)
-    {
-        //if (angle <=180)
-        //{
-        //    return angle;
-        //}
-
-        //return angle - 360;
-
-        return angle <= 180 ? angle : angle - 360;
-        //ternary operator syntax: condition ? ifTrueValue : ifFalseValue
-        // if the condition is true, the whole expression evaluates to ifTrueValue
-        // otherwise it equals the ifFalseValue
-    }
 }
+
